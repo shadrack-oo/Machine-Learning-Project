@@ -1,0 +1,151 @@
+---
+title: "Peer Assignment-Project 1"
+author: "Shadrack Badia"
+date: "9/29/2021"
+output: html_document
+---
+In this project we will be looking to predict how well a group of six participants  do their exercise One thing that people regularly do is quantify how much of a particular activity they do, but they rarely quantify how well they do it. In this project, my goal will be to use data from accelerometers on the belt, forearm, arm, and dumbell of 6 participants. They were asked to perform barbell lifts correctly and incorrectly in 5 different ways.Several machine learning algorythms were used to choose a final model; cross-validation analysis showed that model produced by the random forest method was the most accurate. I will then apply this one machine learning technique to predict the test data.
+
+##Load Libraries
+```{r}
+rm(list=ls())
+
+
+library(caret)
+library(ggplot2)
+library(rattle)
+library(rpart.plot)
+library(randomForest)
+library(gridExtra)
+library(gbm)
+library(splines)
+library(plyr)
+library(dplyr)
+library(corrplot)
+library(rpart) 
+library(e1071)
+
+```
+
+
+
+
+##1.Load The Training and Test datasets
+
+The data will be loaded from the data set given in the question for this projects exercise
+```{r}
+#training <- read.csv("https://d396qusza40orc.cloudfront.net/predmachlearn/pml-training.csv")
+#testing <- read.csv("https://d396qusza40orc.cloudfront.net/predmachlearn/pml-testing.csv")
+
+tr <- read.csv("pml-training.csv")
+testing <- read.csv("pml-testing.csv")
+```
+
+
+
+## 2.SubSetting
+The next step will be to to subset the cleaned training data further into a new training set and a new test set using the caret package.
+
+```{r}
+set.seed(29)
+inTrain = createDataPartition(tr$classe, p = 0.7)[[1]]
+training = tr[inTrain,]
+validation = tr[-inTrain,]
+
+```
+
+
+#3.Data Clean up
+The data seems to have too many NA and missing data. We will start by cleaning. This will help isolate the data we need.
+
+
+We will check on the effect of missing data on the main dataset
+
+
+```{r}
+library(Amelia)
+missmap(training)
+```
+We observe that 41% of the data is made up of missing variables NA's. All this must be removed to make modeling work.
+
+#Removing the columns with little known data
+By removing the na's and setting the thrshold at 95% will provide us with a great data set to work on.
+
+```{r}
+NZV <- nearZeroVar(training)
+training <- training[, -NZV]
+validation  <- validation[, -NZV]
+
+
+```
+
+
+#low variability variables
+Next we remove predictors with low variability this will help boost the predictors and reduce processing time.
+
+
+#Insignificant Data
+
+Now we remove the dates and other insignificant columns that provide information.
+
+```{r}
+AllNA    <- sapply(training, function(x) mean(is.na(x))) > 0.95
+training <- training[, AllNA==FALSE]
+validation  <- validation [, AllNA==FALSE]
+
+
+training <- training[, -(1:5)]
+validation   <- validation [, -(1:5)]
+dim(training)
+
+```
+
+
+
+##4.  Fitting the models to find best fit
+We will try and fit the data to three models and gauge them based on the best and most accurate score. We will try the gradient booting technique then the Decision tree  and finally random forest using the caret package.
+
+#To increase speed of model iteration we will use clustering technique.`
+
+```{r}
+set.seed(30)
+library(parallel)
+library(doParallel)
+cluster <- makeCluster(detectCores() - 1) # convention to leave 1 core for OS
+registerDoParallel(cluster)
+
+tc <- trainControl(method = "cv", number = 5, allowParallel=TRUE)
+
+```
+
+# Random Forest model
+
+```{r}
+controlRF <- trainControl(method="cv", number=3, verboseIter=FALSE)
+modFitRandForest <- train(classe ~ ., data=training, method="rf",
+                          trControl=tc)
+modFitRandForest$finalModel
+
+```
+
+I got an error running the confusion matri
+
+```{r}
+predictRandForest <- predict(modFitRandForest, newdata=validation)
+#confMatRandForest <- confusionMatrix(predictRandForest, validation$classe)
+#confMatRandForest
+
+```
+
+
+
+##Model Validation
+#Test Data Validation
+ Now we use the model to make prediction of the data availed to us for testing.
+```{r}
+test_predict<- predict(modFitRandForest, newdata=testing)
+test_predict
+```
+##Conclusion
+
+Due to the time taken to process, i have included only one modeling technique in this work.
